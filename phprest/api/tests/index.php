@@ -67,6 +67,14 @@ if(isset($_GET['sort'])) {
 		$sortType = 3;
 		$direct='desc';
 	}
+	else if($_GET['sort'] == 'gl|asc') {
+		$sortType = 10;
+		$direct='asc';
+	}
+	else if($_GET['sort'] == 'gl|desc') {
+		$sortType = 10;
+		$direct='desc';
+	}
 }
 // LINKS
 $links = array(
