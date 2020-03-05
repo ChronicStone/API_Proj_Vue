@@ -71,9 +71,13 @@ if(isset($_GET['sort'])) {
 		$sortType = 10;
 		$direct='asc';
 	}
-	else if($_GET['sort'] == 'status|desc') {
-		$sortType = 9;
+	else if($_GET['sort'] == 'gl|desc') {
+		$sortType = 10;
 		$direct='desc';
+	}
+	else if($_GET['sort'] == 'status|asc') {
+		$sortType = 9;
+		$direct='asc';
 	}
 	else if($_GET['sort'] == 'status|desc') {
 		$sortType = 9;
