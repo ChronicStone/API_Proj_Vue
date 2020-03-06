@@ -84,6 +84,15 @@ if(isset($_GET['sort'])) {
 		$direct='desc';
 	}
 }
+
+$filter=[];
+if(isset($_GET['filter'])) {
+	$filter= json_decode($_GET['filter']);
+	for($i=0;$i<count($filter);$i++) {
+		$filter[$i] = '%' . $filter[$i] . '%'; 
+	}
+}
+
 // LINKS
 $links = array(
 'total' => intval($row['num']),
@@ -94,19 +103,31 @@ $links = array(
 'prev_page_url' => $prevpage,
 'from' => $from,
 'to' => $to,
-'direct' =>$direct);
+'direct' =>$direct,
+'filter' => $filter);
 
 
 switch ($_METHOD)
 {
 	case 'GET':
-		if (isset($_GET['id']))
-		{
-			$qry = $db->prepare('SELECT * FROM tests WHERE id=?');
-			$qry->execute(array($_GET['pseudo']));
+		if(isset($_GET['filter'])) {
+			$qry = $db->prepare("SELECT * FROM tests WHERE name LIKE :filtName AND status LIKE :filtStatus AND department LIKE :filtDept AND batch LIKE :filtBatch AND organisation LIKE :filtOrga AND due_date LIKE :filtDueDate AND level LIKE :filtLevel AND month LIKE :filtMonth  AND year LIKE :filtYear ORDER BY :sort LIMIT :min, :max");
+			$qry->bindParam(':sort', $sortType, PDO::PARAM_INT);
+			$qry->bindParam(':filtName', $filter[0], PDO::PARAM_STR);
+			$qry->bindParam(':filtStatus', $filter[1], PDO::PARAM_STR);
+			$qry->bindParam(':filtDept', $filter[2], PDO::PARAM_STR);
+			$qry->bindParam(':filtBatch', $filter[3], PDO::PARAM_STR);
+			$qry->bindParam(':filtOrga', $filter[4], PDO::PARAM_STR);
+			$qry->bindParam(':filtDueDate', $filter[5], PDO::PARAM_STR);
+			$qry->bindParam(':filtLevel', $filter[6], PDO::PARAM_STR);
+			$qry->bindParam(':filtMonth', $filter[7], PDO::PARAM_STR);
+			$qry->bindParam(':filtYear', $filter[8], PDO::PARAM_STR);
+			$qry->bindParam(':min', $id_from, PDO::PARAM_INT);
+			$qry->bindParam(':max', $id_to, PDO::PARAM_INT);
+			$qry->execute();
 			$ans = $qry->fetchAll();
-			$infos = array_map(function($dbentry) { return array(
-				'id' => $dbentry['id'],
+			$data = array_map(function($dbentry) { return array(
+				'id' => intval($dbentry['id']),
 				'name' => $dbentry['name'],
 				'first_name' => $dbentry['first_name'],
 				'due_date' => $dbentry['due_date'],
@@ -114,26 +135,9 @@ switch ($_METHOD)
 				'gl' => $dbentry['gl'],
 				'sc' => $dbentry['sc'],
 				'of' => $dbentry['of']); }, $ans);
-			echo json_encode(array('infos' => $infos));
-		}
-		else if (isset($_GET['name']))
-		{
-			$qry = $db->prepare('SELECT * FROM tests WHERE name=?');
-			$qry->execute(array($_GET['name']));
-			$ans = $qry->fetchAll();
-			$infos = array_map(function($dbentry) { return array('id' => intval($dbentry['id']),
-																'name' => $dbentry['name'],
-																'first_name' => $dbentry['first_name'],
-																'organisation' => $dbentry['organisation'],
-																'mail' => $dbentry['mail'],
-																'batch' => $dbentry['batch'],
-																'atc_manager' => $dbentry['atc_manager'],
-																'due_date' => $dbentry['due_date'],
-																'status' => $dbentry['status'],
-																'gl' => $dbentry['gl'],
-																'sc' => $dbentry['sc'],
-																'of' => $dbentry['of']); }, $ans);
-			echo json_encode(array('infos' => $infos));
+			echo json_encode(array(
+				'links' => $links,
+				'data' => $data));
 		}
 		else
 		{
