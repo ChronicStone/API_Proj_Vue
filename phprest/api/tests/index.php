@@ -1,4 +1,3 @@
-
 <?php
 require('../includes/jsonheader.php');
 require('../includes/parse_delete_put.php');
@@ -68,19 +67,19 @@ if(isset($_GET['sort'])) {
 		$direct='desc';
 	}
 	else if($_GET['sort'] == 'gl|asc') {
-		$sortType = 10;
+		$sortType = 14;
 		$direct='asc';
 	}
 	else if($_GET['sort'] == 'gl|desc') {
-		$sortType = 10;
+		$sortType = 14;
 		$direct='desc';
 	}
 	else if($_GET['sort'] == 'status|asc') {
-		$sortType = 9;
+		$sortType = 13;
 		$direct='asc';
 	}
 	else if($_GET['sort'] == 'status|desc') {
-		$sortType = 9;
+		$sortType = 13;
 		$direct='desc';
 	}
 }
@@ -103,14 +102,79 @@ $links = array(
 'prev_page_url' => $prevpage,
 'from' => $from,
 'to' => $to,
+'sort' => $sortType,
 'direct' =>$direct,
 'filter' => $filter);
 
 
+// Récup des Batch
+$qry = $db->prepare('SELECT * FROM batch');
+$qry->execute();
+$ans = $qry->fetchAll();
+$batch = array_map(function($dbentry) { return array(
+	'id' => intval($dbentry['id']),
+	'date' => $dbentry['date'],
+	'label' => $dbentry['label'],
+	'deleted' => $dbentry['deleted']); 
+}, $ans);
+
+// Récup des Batch
+$qry = $db->prepare('SELECT * FROM department');
+$qry->execute();
+$ans = $qry->fetchAll();
+$department = array_map(function($dbentry) { return array(
+	'id' => intval($dbentry['id']),
+	'name' => $dbentry['name'],
+	'deleted' => $dbentry['deleted']); 
+}, $ans);
+
+// Récup des Organisations
+$qry = $db->prepare('SELECT * FROM organisation');
+$qry->execute();
+$ans = $qry->fetchAll();
+$organisation = array_map(function($dbentry) { return array(
+	'id' => intval($dbentry['id']),
+	'name' => $dbentry['name'],
+	'deleted' => $dbentry['deleted']); 
+}, $ans);
+
+
+
+//Stockage dans un array global des params
+$settings = array('batch' => $batch, 'department' => $department, 'organisation' => $organisation);
 switch ($_METHOD)
 {
 	case 'GET':
 		if(isset($_GET['filter'])) {
+			// Récup count actualisé
+			$query = $db->prepare("SELECT * FROM tests WHERE name LIKE :filtName AND status LIKE :filtStatus AND department LIKE :filtDept AND batch LIKE :filtBatch AND organisation LIKE :filtOrga AND due_date LIKE :filtDueDate AND level LIKE :filtLevel AND month LIKE :filtMonth  AND year LIKE :filtYear ORDER BY name");
+			$query->bindParam(':filtName', $filter[0], PDO::PARAM_STR);
+			$query->bindParam(':filtStatus', $filter[1], PDO::PARAM_STR);
+			$query->bindParam(':filtDept', $filter[2], PDO::PARAM_STR);
+			$query->bindParam(':filtBatch', $filter[3], PDO::PARAM_STR);
+			$query->bindParam(':filtOrga', $filter[4], PDO::PARAM_STR);
+			$query->bindParam(':filtDueDate', $filter[5], PDO::PARAM_STR);
+			$query->bindParam(':filtLevel', $filter[6], PDO::PARAM_STR);
+			$query->bindParam(':filtMonth', $filter[7], PDO::PARAM_STR);
+			$query->bindParam(':filtYear', $filter[8], PDO::PARAM_STR);
+			$query->execute();
+			$ans2 = $query->fetchAll();
+			$data2 = array_map(function($dbentry) { return array(
+				'id' => intval($dbentry['id']),
+				'name' => $dbentry['name'],
+				'first_name' => $dbentry['first_name'],
+				'due_date' => $dbentry['due_date'],
+				'status' => $dbentry['status'],
+				'gl' => $dbentry['gl'],
+				'sc' => $dbentry['sc'],
+				'of' => $dbentry['of']); }, $ans2);
+			$links['total'] = count($data2);
+			$links['last_page'] = intdiv(count($data2), $rowsperpage);
+			if($links['last_page'] = 0) {
+				$links['last_page'] = 1;
+			}
+
+			// Récup datas avec filtres
 			$qry = $db->prepare("SELECT * FROM tests WHERE name LIKE :filtName AND status LIKE :filtStatus AND department LIKE :filtDept AND batch LIKE :filtBatch AND organisation LIKE :filtOrga AND due_date LIKE :filtDueDate AND level LIKE :filtLevel AND month LIKE :filtMonth  AND year LIKE :filtYear ORDER BY :sort LIMIT :min, :max");
 			$qry->bindParam(':sort', $sortType, PDO::PARAM_INT);
 			$qry->bindParam(':filtName', $filter[0], PDO::PARAM_STR);
@@ -136,6 +200,7 @@ switch ($_METHOD)
 				'sc' => $dbentry['sc'],
 				'of' => $dbentry['of']); }, $ans);
 			echo json_encode(array(
+				'count' => count($data2),
 				'links' => $links,
 				'data' => $data));
 		}
@@ -157,6 +222,8 @@ switch ($_METHOD)
 				'sc' => $dbentry['sc'],
 				'of' => $dbentry['of']); }, $ans);
 			echo json_encode(array(
+				'count' => count($data),
+				'settings' =>$settings,
 				'links' => $links,
 				'data' => $data));
 		}
